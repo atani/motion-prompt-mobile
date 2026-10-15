@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Motion Prompt Mobile（非公式）</title>
+<meta name="description" content="Motion Prompt（作者 大滝昇平）の見本を iPhone で見やすくした非公式のモバイル版です。">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#f6f5f2" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#121316" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="MP Mobile">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="format-detection" content="telephone=no">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="icon" href="icons/icon-192.png" type="image/png" sizes="192x192">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<script>
+/* 保存した言語を最初の描画より前に反映する */
+(function () {
+  var l = null;
+  try { l = localStorage.getItem('mpm-lang'); } catch (e) {}
+  if (l !== 'ja' && l !== 'en') l = /^ja\b/i.test(navigator.language || 'ja') ? 'ja' : 'en';
+  document.documentElement.lang = l;
+})();
+</script>
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<header class="appbar">
+  <div class="appbar-in">
+    <h1 class="appbar-title"><span id="appbar-title">Motion Prompt</span><span class="badge" data-t="unofficial">非公式</span></h1>
+    <div class="appbar-acts" id="browse-acts">
+      <button type="button" class="icon-b" id="cols" aria-pressed="false" data-t-attr="aria-label:colsLabel" aria-label="2列で表示">
+        <svg viewBox="0 0 20 20" width="20" height="20" aria-hidden="true" class="i-grid"><rect x="2.5" y="3" width="6.5" height="6" rx="1.5" fill="currentColor"/><rect x="11" y="3" width="6.5" height="6" rx="1.5" fill="currentColor"/><rect x="2.5" y="11" width="6.5" height="6" rx="1.5" fill="currentColor"/><rect x="11" y="11" width="6.5" height="6" rx="1.5" fill="currentColor"/></svg>
+        <svg viewBox="0 0 20 20" width="20" height="20" aria-hidden="true" class="i-list"><rect x="2.5" y="3" width="15" height="6" rx="1.5" fill="currentColor"/><rect x="2.5" y="11" width="15" height="6" rx="1.5" fill="currentColor"/></svg>
+      </button>
+      <button type="button" class="icon-b playtoggle" id="play" aria-pressed="true" aria-label="一時停止">
+        <svg class="i-pause" viewBox="0 0 16 16" width="18" height="18" aria-hidden="true"><rect x="3" y="2.5" width="3.6" height="11" rx="1" fill="currentColor"/><rect x="9.4" y="2.5" width="3.6" height="11" rx="1" fill="currentColor"/></svg>
+        <svg class="i-play" viewBox="0 0 16 16" width="18" height="18" aria-hidden="true"><path d="M4 2.6v10.8a.6.6 0 0 0 .9.5l9-5.4a.6.6 0 0 0 0-1l-9-5.4a.6.6 0 0 0-.9.5z" fill="currentColor"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<main id="main">
+  <!-- 見本 -->
+  <section class="tab" id="tab-browse" data-tab="browse" aria-labelledby="tb-browse">
+    <div class="tools">
+      <label class="search">
+        <span class="sr" data-t="searchLabel">見本を探す</span>
+        <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M13 13l4.5 4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        <input type="search" id="q" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search" placeholder="名前・番号・タグで探す" data-t-attr="placeholder:searchPh">
+      </label>
+      <div class="chips" id="packs" role="group" aria-label="パックで絞り込む" data-t-attr="aria-label:packFilterLabel"></div>
+    </div>
+    <p class="count" id="count" role="status" aria-live="polite"></p>
+    <div class="grid" id="grid"></div>
+    <p class="empty" id="empty" hidden data-t="empty">見つかりませんでした。別の言葉や番号で探してみてください。</p>
+    <noscript><p class="empty">見本の再生には JavaScript が必要です。</p></noscript>
+  </section>
+
+  <!-- 選んだ物 -->
+  <section class="tab" id="tab-picks" data-tab="picks" aria-labelledby="tb-picks" hidden>
+    <div class="pane">
+      <p class="pane-lead" data-t="picksLead">選んだ物をまとめてコピーし、Claude や ChatGPT のアプリに貼り付けて使います。</p>
+      <ol class="rows" id="pick-list"></ol>
+      <p class="empty" id="pick-empty" data-t="picksEmpty">見本の「選ぶ」を押すと、ここに並びます。</p>
+      <div class="acts" id="pick-acts">
+        <button type="button" class="btn btn-main" id="pick-copy" data-t="copyPicked">選んだ物をコピー</button>
+        <button type="button" class="btn" id="pick-share" data-t="share">共有</button>
+        <button type="button" class="btn btn-ghost btn-danger" id="pick-clear" data-t="clearAll">すべて外す</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- お気に入り -->
+  <section class="tab" id="tab-favs" data-tab="favs" aria-labelledby="tb-favs" hidden>
+    <div class="pane">
+      <ol class="rows" id="fav-list"></ol>
+      <p class="empty" id="fav-empty" data-t="favsEmpty">詳細画面の星を押すと、ここに並びます。</p>
+    </div>
+  </section>
+
+  <!-- 情報 -->
+  <section class="tab" id="tab-info" data-tab="info" aria-labelledby="tb-info" hidden>
+    <div class="pane info">
+      <div class="card">
+        <h2 data-t="langH">言語</h2>
+        <div class="seg" role="group" aria-label="言語" data-t-attr="aria-label:langH">
+          <button type="button" class="seg-b" data-lang="ja" aria-pressed="true">日本語</button>
+          <button type="button" class="seg-b" data-lang="en" aria-pressed="false">English</button>
+        </div>
+      </div>
+      <div class="card">
+        <h2 data-t="aboutH">このアプリについて</h2>
+        <p data-t="aboutP1">Motion Prompt の見本を iPhone で見やすくした、非公式のモバイル版です。上流の作者とは関係なく、個人が作っています。</p>
+        <p><span data-t="aboutP2">見本・名前・説明文・描画コードは、上流の Motion Prompt をそのまま同梱しています。</span></p>
+        <ul class="links">
+          <li><a href="https://showheyohtaki.github.io/motion-prompt/" rel="noopener" data-t="upstreamSite">上流のサイト（公式）</a></li>
+          <li><a href="https://github.com/showheyohtaki/motion-prompt" rel="noopener" data-t="upstreamRepo">上流の GitHub</a></li>
+          <li><span data-t="authorLabel">作者</span>: <span data-t="authorName">大滝昇平</span>（<a href="https://x.com/showheyohtaki" rel="noopener">@showheyohtaki</a>）</li>
+          <li><a href="https://github.com/atani/motion-prompt-mobile" rel="noopener" data-t="thisRepo">このモバイル版の GitHub</a></li>
+        </ul>
+        <p class="meta"><span data-t="shaLabel">同梱している上流のコミット</span>: <code id="sha">…</code></p>
+      </div>
+      <div class="card">
+        <h2 data-t="howH">使い方</h2>
+        <ol class="steps">
+          <li data-t="how1">「見本」で動きを見て、使いたい物の「選ぶ」を押します。</li>
+          <li data-t="how2">「選んだ物」で、必要なら要素ごとに一言のメモを書きます。</li>
+          <li data-t="how3">「選んだ物をコピー」を押し、Claude や ChatGPT のアプリに貼り付けて頼みます。1 つだけなら、詳細の「プロンプトをコピー」でも渡せます。</li>
+        </ol>
+      </div>
+      <div class="card">
+        <h2 data-t="installH">ホーム画面に追加する</h2>
+        <ol class="steps">
+          <li data-t="install1">Safari でこのページを開きます。</li>
+          <li data-t="install2">画面下の共有ボタン（四角から上向きの矢印）を押します。</li>
+          <li data-t="install3">「ホーム画面に追加」を選び、「追加」を押します。</li>
+        </ol>
+        <p data-t="installP">ホーム画面から開くとアプリのように全画面で動きます。一度開けば、通信がなくても見本を見られます。</p>
+      </div>
+      <div class="card">
+        <h2 data-t="licenseH">ライセンス</h2>
+        <p data-t="licenseP">上流の Motion Prompt は MIT ライセンスです。全文は次のとおりです。</p>
+        <pre class="license" id="license-text">…</pre>
+        <p><a href="vendor/motion-prompt/THIRD-PARTY-NOTICES.md" data-t="noticesLink">上流の THIRD-PARTY-NOTICES</a></p>
+        <p data-t="ownLicenseP">このモバイル版の画面とコードも MIT ライセンスです（Copyright (c) 2026 atani）。</p>
+        <p><a href="LICENSE" data-t="ownLicenseLink">このモバイル版の LICENSE</a></p>
+      </div>
+    </div>
+  </section>
+</main>
+
+<nav class="tabbar" aria-label="タブ" data-t-attr="aria-label:tabsLabel">
+  <div class="tabbar-in" role="tablist">
+    <button type="button" role="tab" class="tb" id="tb-browse" data-go="browse" aria-controls="tab-browse" aria-selected="true">
+      <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><rect x="3" y="4" width="18" height="7" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><rect x="3" y="13" width="18" height="7" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M10 6.6v1.8l2-.9z" fill="currentColor" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+      <span data-t="tabBrowse">見本</span>
+    </button>
+    <button type="button" role="tab" class="tb" id="tb-picks" data-go="picks" aria-controls="tab-picks" aria-selected="false">
+      <span class="tb-ic">
+        <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M8 12.3l2.7 2.7L16 9.3" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span class="tb-badge" id="pick-badge" hidden>0</span>
+      </span>
+      <span data-t="tabPicks">選んだ物</span>
+    </button>
+    <button type="button" role="tab" class="tb" id="tb-favs" data-go="favs" aria-controls="tab-favs" aria-selected="false">
+      <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path d="M12 3.8l2.5 5.1 5.6.8-4.05 3.95.96 5.6L12 16.6l-5.01 2.65.96-5.6L3.9 9.7l5.6-.8z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+      <span data-t="tabFavs">お気に入り</span>
+    </button>
+    <button type="button" role="tab" class="tb" id="tb-info" data-go="info" aria-controls="tab-info" aria-selected="false">
+      <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 11v5.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="7.8" r="1.2" fill="currentColor"/></svg>
+      <span data-t="tabInfo">情報</span>
+    </button>
+  </div>
+</nav>
+
+<!-- 詳細シート -->
+<div class="sheet-backdrop" id="backdrop" hidden></div>
+<div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="d-name" hidden>
+  <div class="sheet-bar">
+    <span class="grabber" aria-hidden="true"></span>
+    <button type="button" class="icon-b" id="d-close" aria-label="閉じる">
+      <svg viewBox="0 0 20 20" width="20" height="20" aria-hidden="true"><path d="M5 7.5l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+    <p class="d-id"><span id="d-id">#000</span><span class="d-where" id="d-where"></span></p>
+    <button type="button" class="icon-b" id="d-prev" aria-label="前の名前"><svg viewBox="0 0 16 16" width="18" height="18" aria-hidden="true"><path d="M10 3L5 8l5 5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+    <button type="button" class="icon-b" id="d-next" aria-label="次の名前"><svg viewBox="0 0 16 16" width="18" height="18" aria-hidden="true"><path d="M6 3l5 5-5 5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+  </div>
+  <div class="sheet-body" id="sheet-body">
+    <div class="d-stage" id="d-stage">
+      <canvas id="d-canvas" aria-hidden="true"></canvas>
+      <button type="button" class="d-playbtn playtoggle" id="d-play" aria-pressed="true" aria-label="一時停止">
+        <svg class="i-pause" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><rect x="3" y="2.5" width="3.6" height="11" rx="1" fill="currentColor"/><rect x="9.4" y="2.5" width="3.6" height="11" rx="1" fill="currentColor"/></svg>
+        <svg class="i-play" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M4 2.6v10.8a.6.6 0 0 0 .9.5l9-5.4a.6.6 0 0 0 0-1l-9-5.4a.6.6 0 0 0-.9.5z" fill="currentColor"/></svg>
+      </button>
+      <p class="d-broken" data-t="loadFailed" hidden>読み込めませんでした</p>
+    </div>
+    <div class="d-head">
+      <h2 id="d-name" tabindex="-1"></h2>
+      <p class="d-sub" id="d-sub"></p>
+      <p class="d-meaning" id="d-meaning"></p>
+    </div>
+    <div class="d-tools">
+      <button type="button" class="tool-b" id="d-fav" aria-pressed="false">
+        <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M12 3.8l2.5 5.1 5.6.8-4.05 3.95.96 5.6L12 16.6l-5.01 2.65.96-5.6L3.9 9.7l5.6-.8z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+        <span id="d-fav-t">お気に入り</span>
+      </button>
+      <button type="button" class="tool-b" id="d-share">
+        <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M12 3.5v11M8 7.2l4-3.7 4 3.7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M8.5 10.5H6.8a1.8 1.8 0 0 0-1.8 1.8v6.4c0 1 .8 1.8 1.8 1.8h10.4c1 0 1.8-.8 1.8-1.8v-6.4c0-1-.8-1.8-1.8-1.8h-1.7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        <span data-t="share">共有</span>
+      </button>
+      <button type="button" class="tool-b" id="d-copy-code">
+        <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M9 7l-5 5 5 5M15 7l5 5-5 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span data-t="copyCode">コードをコピー</span>
+      </button>
+    </div>
+    <div class="d-main">
+      <p class="d-summary" id="d-summary"></p>
+      <h3 id="d-ask-h" data-t="dAsk">AIへの頼み方の例</h3>
+      <p class="d-ask" id="d-ask"></p>
+      <h3 data-t="dSpec">動きの仕様</h3>
+      <ul class="d-spec" id="d-spec"></ul>
+      <h3 data-t="dUse">使いどころ</h3>
+      <p id="d-use"></p>
+      <ul class="d-tags" id="d-tags" aria-label="タグ" data-t-attr="aria-label:tagsLabel"></ul>
+      <details class="d-more">
+        <summary data-t="promptLabel">コピーされるプロンプト</summary>
+        <pre id="d-prompt" tabindex="0"></pre>
+      </details>
+      <details class="d-more" id="d-code-box">
+        <summary data-t="showCode">コードを見る</summary>
+        <pre id="d-code" tabindex="0"></pre>
+      </details>
+    </div>
+  </div>
+  <div class="sheet-foot">
+    <button type="button" class="btn btn-pick" id="d-pick" aria-pressed="false"><span class="pick-box" aria-hidden="true"><svg viewBox="0 0 16 16" width="14" height="14"><path d="M3.5 8.4l3 3 6-6.6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span id="d-pick-t">選ぶ</span></button>
+    <button type="button" class="btn btn-main" id="d-copy-prompt" data-t="copyPrompt">プロンプトをコピー</button>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script src="vendor/motion-prompt/assets/runtime.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
